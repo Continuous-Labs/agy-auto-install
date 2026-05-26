@@ -1,9 +1,13 @@
 #!/bin/bash
 #
-# Antigravity CLI Installation Engine
+# Antigravity 2.0 - Unified Linux Installation Engine
 #
-# Autodetects CPU architecture, downloads the official CLI installer,
-# and configures the environment paths.
+# Autodetects CPU architecture, queries official updater APIs, downloads release binaries,
+# retrieves official branding icons, and configures native desktop launchers (.desktop entries).
+#
+# Writable scopes:
+#   - Local User (Default): ~/.local/bin, ~/.local/share/antigravity
+#   - System-wide: /usr/local/bin, /opt/antigravity
 #
 
 set -euo pipefail
@@ -18,8 +22,26 @@ NC='\033[0m' # No Color
 BOLD='\033[1m'
 
 # --- 2. Constants & Settings ---
+INSTALL_CORE=false
+INSTALL_IDE=false
+INSTALL_CLI=false
 SCOPE="local"
 TARGET_DIR=""
+
+ICON_COLOR_URL="https://antigravity.google/assets/image/brand/antigravity-icon__full-color.png"
+ICON_WHITE_URL="https://antigravity.google/assets/image/brand/antigravity-icon__white.png"
+LOGO_BASE_URL="https://antigravity.google/assets/image/antigravity-logo.png"
+
+# --- Default Fallback Pinned Versions ---
+DEFAULT_CORE_VERSION="2.0.6"
+DEFAULT_CORE_EXEC_ID="5413878570549248"
+DEFAULT_IDE_VERSION="2.0.3"
+DEFAULT_IDE_EXEC_ID="6242596486512640"
+
+CORE_VERSION="$DEFAULT_CORE_VERSION"
+CORE_EXEC_ID="$DEFAULT_CORE_EXEC_ID"
+IDE_VERSION="$DEFAULT_IDE_VERSION"
+IDE_EXEC_ID="$DEFAULT_IDE_EXEC_ID"
 
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -37,11 +59,82 @@ log_error() {
     echo -e "${RED}[ERROR] ✗${NC} $1" >&2
 }
 
+create_wrapper_script() {
+    local target_exec="$1"
+    local bin_path="$2"
+    local dir_path
+    dir_path=$(dirname "$target_exec")
+
+    rm -f "$bin_path" 2>/dev/null || true
+    cat << EOF > "$bin_path"
+#!/bin/bash
+# Antigravity Executable Wrapper
+cd "$dir_path" && exec "./\$(basename "$target_exec")" "\$@"
+EOF
+    chmod +x "$bin_path"
+}
+
+resolve_latest_versions() {
+    log_info "Attempting to dynamically resolve the latest versions from the website..."
+    
+    if command -v python3 >/dev/null 2>&1; then
+        resolved_payload=$(python3 -c "
+import urllib.request, gzip, re
+try:
+    req = urllib.request.Request('https://antigravity.google/download', headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req) as resp:
+        html = resp.read()
+        if resp.info().get('Content-Encoding') == 'gzip' or html[:2] == b'\x1f\x8b':
+            html = gzip.decompress(html)
+        html = html.decode('utf-8')
+    js_match = re.search(r'src=\"([^\"]*main[^\"]*\.js)\"', html)
+    if js_match:
+        js_url = 'https://antigravity.google/' + js_match.group(1)
+        req_js = urllib.request.Request(js_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req_js) as resp_js:
+            js = resp_js.read()
+            if resp_js.info().get('Content-Encoding') == 'gzip' or js[:2] == b'\x1f\x8b':
+                js = gzip.decompress(js)
+            js = js.decode('utf-8')
+        core_m = re.search(r'id:\"antigravity-2\".*?antigravity-hub/([0-9\.]+)-([0-9]+)/', js)
+        ide_m = re.search(r'id:\"antigravity-ide\".*?stable/([0-9\.]+)-([0-9]+)/', js)
+        
+        core_v = core_m.group(1) if core_m else ''
+        core_id = core_m.group(2) if core_m else ''
+        ide_v = ide_m.group(1) if ide_m else ''
+        ide_id = ide_m.group(2) if ide_m else ''
+        
+        print(f'{core_v}|{core_id}|{ide_v}|{ide_id}')
+except Exception:
+    pass
+" || true)
+
+        if [ -n "$resolved_payload" ]; then
+            IFS='|' read -r r_core_v r_core_id r_ide_v r_ide_id <<< "$resolved_payload"
+            if [ -n "$r_core_v" ] && [ -n "$r_core_id" ]; then
+                CORE_VERSION="$r_core_v"
+                CORE_EXEC_ID="$r_core_id"
+                log_success "Dynamically resolved latest Core Version: $CORE_VERSION"
+            fi
+            if [ -n "$r_ide_v" ] && [ -n "$r_ide_id" ]; then
+                IDE_VERSION="$r_ide_v"
+                IDE_EXEC_ID="$r_ide_id"
+                log_success "Dynamically resolved latest IDE Version: $IDE_VERSION"
+            fi
+        else
+            log_warn "Dynamic scraper failed. Using stable pinned defaults (Core: $CORE_VERSION, IDE: $IDE_VERSION)."
+        fi
+    else
+        log_warn "Python3 not found. Bypassing dynamic scraper and using stable pinned defaults."
+    fi
+}
+
 show_usage() {
-    echo -e "${BOLD}Antigravity CLI Installer${NC}"
+    echo -e "${BOLD}Antigravity 2.0 Unified Linux Installer${NC}"
     echo "Usage: ./install.sh [options]"
     echo ""
     echo "Options:"
+    echo "  --components <list>  Comma-separated components to install (core, ide, cli, all)"
     echo "  --scope <scope>      Installation scope: 'local' (default, no sudo) or 'system' (requires root)"
     echo "  --dir <path>         Override installation directory path"
     echo "  -h, --help           Display this help menu"
@@ -49,8 +142,21 @@ show_usage() {
 }
 
 # --- 3. Parse Arguments ---
+COMPONENTS_ARG=""
 while (( "$#" )); do
     case "$1" in
+        --components)
+            if [ -z "${2:-}" ]; then
+                log_error "Missing value for --components"
+                exit 1
+            fi
+            COMPONENTS_ARG="$2"
+            shift 2
+            ;;
+        --components=*)
+            COMPONENTS_ARG="${1#*=}"
+            shift
+            ;;
         --scope)
             if [ -z "${2:-}" ] || [[ ! "$2" =~ ^(local|system)$ ]]; then
                 log_error "Invalid value for --scope. Must be 'local' or 'system'."
@@ -84,14 +190,6 @@ while (( "$#" )); do
             show_usage
             exit 0
             ;;
-        --components|--components=*|--simulated)
-            # Accept and ignore obsolete arguments for compatibility with legacy callers
-            if [[ "$1" == "--components" || "$1" == "--dir" || "$1" == "--scope" ]]; then
-                shift 2
-            else
-                shift
-            fi
-            ;;
         *)
             log_error "Unsupported option: $1"
             show_usage
@@ -99,6 +197,38 @@ while (( "$#" )); do
             ;;
     esac
 done
+
+# Resolve Components
+if [ -z "${COMPONENTS_ARG:-}" ]; then
+    log_warn "No components specified. Installing all components by default."
+    INSTALL_CORE=true
+    INSTALL_IDE=true
+    INSTALL_CLI=true
+else
+    IFS=',' read -ra ADDR <<< "$COMPONENTS_ARG"
+    for comp in "${ADDR[@]}"; do
+        case "$comp" in
+            core) INSTALL_CORE=true ;;
+            ide) INSTALL_IDE=true ;;
+            cli) INSTALL_CLI=true ;;
+            all)
+                INSTALL_CORE=true
+                INSTALL_IDE=true
+                INSTALL_CLI=true
+                ;;
+            *)
+                log_error "Unknown component: $comp. Valid options: core, ide, cli, all"
+                exit 1
+                ;;
+        esac
+    done
+fi
+
+# Ensure at least one component is selected
+if [ "$INSTALL_CORE" = false ] && [ "$INSTALL_IDE" = false ] && [ "$INSTALL_CLI" = false ]; then
+    log_error "Please specify at least one component to install."
+    exit 1
+fi
 
 # --- 4. Environment & Architecture Check ---
 log_info "Detecting system environment..."
@@ -124,28 +254,42 @@ esac
 log_success "Architecture detected: ${BOLD}$ARCH_NAME${NC} ($ARCH_LABEL)"
 
 # Resolve Paths
+CUSTOM_DIR=false
 if [ -z "$TARGET_DIR" ]; then
     if [ "$SCOPE" = "system" ]; then
         TARGET_DIR="/usr/local"
     else
         TARGET_DIR="$HOME/.local"
     fi
+else
+    CUSTOM_DIR=true
 fi
 
 BIN_DIR="$TARGET_DIR/bin"
+if [ "$CUSTOM_DIR" = true ]; then
+    SHARE_DIR="$TARGET_DIR"
+else
+    SHARE_DIR="$TARGET_DIR/share"
+fi
+DESKTOP_DIR="$HOME/.local/share/applications"
+if [ "$SCOPE" = "system" ]; then
+    DESKTOP_DIR="/usr/share/applications"
+fi
 
 log_info "Target Directory Structure:"
 log_info "  - Executables: $BIN_DIR"
+log_info "  - App Data:    $SHARE_DIR/antigravity"
+log_info "  - Shortcuts:   $DESKTOP_DIR"
 
 # Validate Permissions
 if [ "$SCOPE" = "system" ] && [ "$EUID" -ne 0 ]; then
     log_error "System-wide scope requested. Please re-run with sudo privileges:"
-    log_error "  sudo ./install.sh --scope system"
+    log_error "  sudo ./install.sh --scope system --components ${COMPONENTS_ARG:-all}"
     exit 1
 fi
 
-# Ensure directory exists
-mkdir -p "$BIN_DIR" 2>/dev/null || {
+# Ensure directories exist
+mkdir -p "$BIN_DIR" "$SHARE_DIR" 2>/dev/null || {
     log_error "Permission denied when writing to target paths. Run with '--scope local' or use sudo."
     exit 1
 }
@@ -179,35 +323,191 @@ download_file() {
     fi
 }
 
-# --- 5. Component Installation: Antigravity CLI ---
-log_info "Starting Antigravity CLI Installation..."
-log_info "Downloading and executing official CLI bootstrapper..."
+# --- Resolve Latest Versions dynamically from site ---
+resolve_latest_versions
 
-if download_file "https://antigravity.google/cli/install.sh" "$STAGING_DIR/cli_install.sh"; then
-    if bash "$STAGING_DIR/cli_install.sh" --dir "$BIN_DIR"; then
-        log_success "Official Antigravity CLI installed successfully."
-    else
-        log_error "Official CLI bootstrapper execution failed."
-        exit 1
-    fi
+# --- 5. Download Branding Icons ---
+log_info "Fetching official brand guidelines assets..."
+ICON_DIR="$SHARE_DIR/antigravity/icons"
+mkdir -p "$ICON_DIR"
+
+LOGO_PATH="$ICON_DIR/antigravity.png"
+LOGO_WHITE_PATH="$ICON_DIR/antigravity-white.png"
+
+log_info "Downloading official branding from Google CDN..."
+if download_file "$ICON_COLOR_URL" "$LOGO_PATH" && download_file "$ICON_WHITE_URL" "$LOGO_WHITE_PATH"; then
+    log_success "Official brand icons downloaded."
 else
-    log_error "Failed to download official CLI bootstrapper."
-    exit 1
+    log_warn "Failed to fetch brand icons from Google server. Will generate placeholders."
+    echo "Placeholder logo" > "$LOGO_PATH"
+    echo "Placeholder white logo" > "$LOGO_WHITE_PATH"
 fi
 
-# Symlink a clean alternative alias 'antigravity-cli'
-ln -sf "$BIN_DIR/agy" "$BIN_DIR/antigravity-cli"
-log_info "CLI symlinked as both 'agy' and 'antigravity-cli'."
+# --- 6. Component Installation: Antigravity CLI ---
+if [ "$INSTALL_CLI" = true ]; then
+    log_info "Starting Antigravity CLI Installation..."
+    log_info "Downloading and executing official CLI bootstrapper..."
+    
+    if download_file "https://antigravity.google/cli/install.sh" "$STAGING_DIR/cli_install.sh"; then
+        if bash "$STAGING_DIR/cli_install.sh" --dir "$BIN_DIR"; then
+            log_success "Official Antigravity CLI installed successfully."
+        else
+            log_error "Official CLI bootstrapper execution failed."
+            exit 1
+        fi
+    else
+        log_error "Failed to download official CLI bootstrapper."
+        exit 1
+    fi
 
-# --- 6. Verification & Instruction ---
+    # Symlink a clean alternative alias 'antigravity-cli'
+    ln -sf "$BIN_DIR/agy" "$BIN_DIR/antigravity-cli"
+    log_info "CLI symlinked as both 'agy' and 'antigravity-cli'."
+fi
+
+# --- 7. Component Installation: Antigravity Core ---
+if [ "$INSTALL_CORE" = true ]; then
+    log_info "Starting Antigravity Core Application Installation..."
+    
+    core_url="https://storage.googleapis.com/antigravity-public/antigravity-hub/${CORE_VERSION}-${CORE_EXEC_ID}/${ARCH_LABEL}/Antigravity.tar.gz"
+    log_info "Downloading Antigravity Core v$CORE_VERSION..."
+    log_info "Source: $core_url"
+    
+    if download_file "$core_url" "$STAGING_DIR/core.tar.gz"; then
+        log_success "Download complete."
+        log_info "Extracting Application Data..."
+        mkdir -p "$SHARE_DIR/antigravity"
+        if tar -xzf "$STAGING_DIR/core.tar.gz" --strip-components=1 -C "$SHARE_DIR/antigravity" 2>/dev/null || tar -xzf "$STAGING_DIR/core.tar.gz" --strip-components=1 -C "$SHARE_DIR/antigravity"; then
+            log_success "Extraction complete."
+            
+            # Symlink wrapper executable
+            if [ -f "$SHARE_DIR/antigravity/antigravity" ]; then
+                create_wrapper_script "$SHARE_DIR/antigravity/antigravity" "$BIN_DIR/antigravity"
+            else
+                found_exec=$(find "$SHARE_DIR/antigravity" -maxdepth 3 -type f -name "antigravity" -executable | head -n 1)
+                if [ -z "$found_exec" ]; then
+                    found_exec=$(find "$SHARE_DIR/antigravity" -maxdepth 3 -type f -executable ! -name "*.so" | head -n 1)
+                fi
+                if [ -n "$found_exec" ]; then
+                    create_wrapper_script "$found_exec" "$BIN_DIR/antigravity"
+                else
+                    log_error "Antigravity core binary not found in extracted directory."
+                    exit 1
+                fi
+            fi
+        else
+            log_error "Extraction of Core archive failed."
+            exit 1
+        fi
+    else
+        log_error "Failed to download core archive from Google Cloud Storage."
+        exit 1
+    fi
+
+    # Create Launcher Shortcut (.desktop)
+    log_info "Integrating desktop application shortcuts..."
+    mkdir -p "$DESKTOP_DIR"
+    
+    DESKTOP_ICON_PATH="$LOGO_PATH"
+    if [ ! -f "$DESKTOP_ICON_PATH" ] || [ ! -s "$DESKTOP_ICON_PATH" ]; then
+        DESKTOP_ICON_PATH="system-run"
+    fi
+
+    cat << EOF > "$DESKTOP_DIR/antigravity.desktop"
+[Desktop Entry]
+Type=Application
+Name=Antigravity
+Comment=Google Antigravity Core Mission Control
+Exec=$BIN_DIR/antigravity
+Icon=$DESKTOP_ICON_PATH
+Terminal=false
+Categories=Development;Utility;
+StartupNotify=true
+EOF
+    chmod +x "$DESKTOP_DIR/antigravity.desktop"
+    log_success "Antigravity Core desktop launcher integrated."
+fi
+
+# --- 8. Component Installation: Antigravity IDE ---
+if [ "$INSTALL_IDE" = true ]; then
+    log_info "Starting Antigravity IDE Installation..."
+    
+    ide_url="https://edgedl.me.gvt1.com/edgedl/release2/j0qc3/antigravity/stable/${IDE_VERSION}-${IDE_EXEC_ID}/${ARCH_LABEL}/Antigravity%20IDE.tar.gz"
+    log_info "Downloading Antigravity IDE v$IDE_VERSION..."
+    log_info "Source: $ide_url"
+    
+    if download_file "$ide_url" "$STAGING_DIR/ide.tar.gz"; then
+        log_success "Download complete."
+        log_info "Extracting IDE Files..."
+        mkdir -p "$SHARE_DIR/antigravity-ide"
+        if tar -xzf "$STAGING_DIR/ide.tar.gz" --strip-components=1 -C "$SHARE_DIR/antigravity-ide" 2>/dev/null || tar -xzf "$STAGING_DIR/ide.tar.gz" --strip-components=1 -C "$SHARE_DIR/antigravity-ide"; then
+            log_success "Extraction complete."
+            
+            if [ -f "$SHARE_DIR/antigravity-ide/antigravity-ide" ]; then
+                create_wrapper_script "$SHARE_DIR/antigravity-ide/antigravity-ide" "$BIN_DIR/antigravity-ide"
+            else
+                found_exec=$(find "$SHARE_DIR/antigravity-ide" -maxdepth 3 -type f -name "antigravity-ide" -executable | head -n 1)
+                if [ -z "$found_exec" ]; then
+                    found_exec=$(find "$SHARE_DIR/antigravity-ide" -maxdepth 3 -type f -executable ! -name "*.so" | head -n 1)
+                fi
+                if [ -n "$found_exec" ]; then
+                    create_wrapper_script "$found_exec" "$BIN_DIR/antigravity-ide"
+                else
+                    log_error "Antigravity IDE binary not found in extracted directory."
+                    exit 1
+                fi
+            fi
+        else
+            log_error "Extraction of IDE archive failed."
+            exit 1
+        fi
+    else
+        log_error "Failed to download IDE archive from Google CDN."
+        exit 1
+    fi
+
+    # Create Launcher Shortcut (.desktop)
+    log_info "Integrating desktop application shortcuts..."
+    mkdir -p "$DESKTOP_DIR"
+    
+    DESKTOP_ICON_PATH="$LOGO_PATH"
+    if [ ! -f "$DESKTOP_ICON_PATH" ] || [ ! -s "$DESKTOP_ICON_PATH" ]; then
+        DESKTOP_ICON_PATH="utilities-terminal"
+    fi
+
+    cat << EOF > "$DESKTOP_DIR/antigravity-ide.desktop"
+[Desktop Entry]
+Type=Application
+Name=Antigravity IDE
+Comment=Antigravity Integrated Agent-First IDE
+Exec=$BIN_DIR/antigravity-ide
+Icon=$DESKTOP_ICON_PATH
+Terminal=false
+Categories=Development;IDE;
+StartupNotify=true
+EOF
+    chmod +x "$DESKTOP_DIR/antigravity-ide.desktop"
+    log_success "Antigravity IDE desktop launcher integrated."
+fi
+
+# --- 9. Final Integration Reloads ---
+log_info "Reloading desktop environments..."
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
+    log_success "Desktop shortcuts registered."
+fi
+
+# --- 10. Verification & Instruction ---
 log_info "Verifying installations..."
 PATH="$BIN_DIR:$PATH"
 
 echo -e "\n${GREEN}${BOLD}========================================================================${NC}"
-echo -e "         ${GREEN}${BOLD}Antigravity CLI Linux Installation Completed!${NC}"
+echo -e "         ${GREEN}${BOLD}Antigravity 2.0 Suite Linux Installation Completed!${NC}"
 echo -e "${GREEN}${BOLD}========================================================================${NC}"
 echo " Installed Components:"
-echo -e "  - ${BOLD}Antigravity CLI (agy)${NC}: Available in PATH as 'agy' & 'antigravity-cli'"
+[ "$INSTALL_CORE" = true ] && echo -e "  - ${BOLD}Antigravity Core App${NC} : Integrated (Launcher: 'Antigravity')"
+[ "$INSTALL_IDE" = true ] && echo -e "  - ${BOLD}Antigravity IDE${NC}      : Integrated (Launcher: 'Antigravity IDE')"
+[ "$INSTALL_CLI" = true ] && echo -e "  - ${BOLD}Antigravity CLI (agy)${NC}: Available in PATH as 'agy' & 'antigravity-cli'"
 
 echo -e "\n${YELLOW}${BOLD}Shell Environment Action Required:${NC}"
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then

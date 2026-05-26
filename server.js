@@ -36,6 +36,14 @@ app.get('/api/system-info', (req, res) => {
     pathEnv: process.env.PATH,
     binInPath: process.env.PATH?.includes(localBin) || false,
     components: {
+      core: {
+        installed: isExecutable(path.join(localBin, 'antigravity')),
+        path: path.join(localBin, 'antigravity')
+      },
+      ide: {
+        installed: isExecutable(path.join(localBin, 'antigravity-ide')),
+        path: path.join(localBin, 'antigravity-ide')
+      },
       cli: {
         installed: isExecutable(path.join(localBin, 'agy')) || isExecutable(path.join(localBin, 'antigravity-cli')),
         path: path.join(localBin, 'agy')
@@ -48,7 +56,7 @@ app.get('/api/system-info', (req, res) => {
 
 // 2. Real-Time SSE Log Streaming Endpoint
 app.get('/api/install/stream', (req, res) => {
-  const { scope } = req.query;
+  const { components, scope } = req.query;
 
   // Set SSE Headers
   res.setHeader('Content-Type', 'text/event-stream');
@@ -64,6 +72,9 @@ app.get('/api/install/stream', (req, res) => {
   
   // Build arguments
   const args = [];
+  if (components) {
+    args.push('--components', components);
+  }
   if (scope) {
     args.push('--scope', scope);
   }
@@ -97,16 +108,25 @@ app.get('/api/install/stream', (req, res) => {
       if (line.includes('Detecting system environment')) {
         sendEvent('step', { id: 'env', status: 'active', percent: 10 });
       } else if (line.includes('Architecture detected')) {
-        sendEvent('step', { id: 'env', status: 'done', percent: 30 });
-      } else if (line.includes('Starting Antigravity CLI Installation')) {
-        sendEvent('step', { id: 'download', status: 'active', percent: 50 });
-      } else if (line.includes('Downloading and executing official CLI bootstrapper')) {
-        sendEvent('step', { id: 'download', status: 'active', percent: 70 });
-      } else if (line.includes('Official Antigravity CLI installed successfully')) {
-        sendEvent('step', { id: 'download', status: 'done', percent: 90 });
-        sendEvent('step', { id: 'extract', status: 'active', percent: 95 });
-      } else if (line.includes('CLI symlinked as both') || line.includes('completed successfully')) {
-        sendEvent('step', { id: 'extract', status: 'done', percent: 100 });
+        sendEvent('step', { id: 'env', status: 'done', percent: 20 });
+      } else if (line.includes('Fetching official brand guidelines') || line.includes('resolving the latest versions')) {
+        sendEvent('step', { id: 'resolve', status: 'active', percent: 30 });
+      } else if (line.includes('Official brand icons downloaded') || line.includes('Latest available version') || line.includes('resolved latest')) {
+        sendEvent('step', { id: 'resolve', status: 'done', percent: 45 });
+      } else if (line.includes('Downloading')) {
+        sendEvent('step', { id: 'download', status: 'active', percent: 60 });
+      } else if (line.includes('Download complete') || line.includes('bootstrapper execution')) {
+        sendEvent('step', { id: 'download', status: 'done', percent: 75 });
+      } else if (line.includes('Extracting') || line.includes('Copying')) {
+        sendEvent('step', { id: 'extract', status: 'active', percent: 80 });
+      } else if (line.includes('Extraction complete') || line.includes('installed successfully')) {
+        sendEvent('step', { id: 'extract', status: 'done', percent: 90 });
+      } else if (line.includes('Integrating desktop application')) {
+        sendEvent('step', { id: 'shortcut', status: 'active', percent: 95 });
+      } else if (line.includes('desktop shortcuts registered')) {
+        sendEvent('step', { id: 'shortcut', status: 'done', percent: 98 });
+      } else if (line.includes('Installation Completed')) {
+        sendEvent('step', { id: 'finish', status: 'done', percent: 100 });
       }
     });
   });

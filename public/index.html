@@ -47,8 +47,8 @@
       <!-- STEP 1: WELCOME & ENVIRONMENT DETECTION -->
       <section id="step-welcome" class="step-section active">
         <div class="welcome-hero">
-          <h2>Deploy Antigravity CLI Seamlessly</h2>
-          <p>This assistant automates the download, checksum verification, executable placement, and shell path integration for the official Antigravity CLI (`agy`) on Linux systems.</p>
+          <h2>Deploy Antigravity Seamlessly</h2>
+          <p>This assistant automates the extraction, link generation, environment configuration, and shortcut integrations for the Antigravity v2.0 Suite on Linux systems.</p>
         </div>
 
         <div class="section-divider"></div>
@@ -85,25 +85,61 @@
 
       <!-- STEP 2: CONFIGURATION & SELECTION -->
       <section id="step-config" class="step-section">
-        <h2>Installer Options</h2>
-        <p class="section-desc">Review your target installation directory and scope configuration below.</p>
+        <h2>Choose Suite Components</h2>
+        <p class="section-desc">Select the items you would like to download, install, or update below.</p>
 
         <!-- Components List Grid -->
         <div class="components-grid">
           
-          <!-- Component Card: CLI Only -->
-          <div class="comp-card selected" data-comp="cli">
+          <!-- Component Card: Core -->
+          <div class="comp-card" data-comp="core">
+            <div class="card-icon" id="icon-core"></div>
+            <div class="card-details">
+              <div class="card-header">
+                <h3>Antigravity Core</h3>
+                <span class="status-badge" id="badge-core">Checking...</span>
+              </div>
+              <p>The standard client portal. Features the core engine, system agent integrations, and evaluation tools.</p>
+            </div>
+            <div class="card-action">
+              <label class="custom-checkbox">
+                <input type="checkbox" id="chk-core" checked>
+                <span class="checkmark"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Component Card: IDE -->
+          <div class="comp-card" data-comp="ide">
+            <div class="card-icon" id="icon-ide"></div>
+            <div class="card-details">
+              <div class="card-header">
+                <h3>Antigravity IDE</h3>
+                <span class="status-badge" id="badge-ide">Checking...</span>
+              </div>
+              <p>The fully-featured agentic IDE. Complete with agent managers, workspace visualisers, and code trackers.</p>
+            </div>
+            <div class="card-action">
+              <label class="custom-checkbox">
+                <input type="checkbox" id="chk-ide" checked>
+                <span class="checkmark"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Component Card: CLI -->
+          <div class="comp-card" data-comp="cli">
             <div class="card-icon" id="icon-cli"></div>
             <div class="card-details">
               <div class="card-header">
                 <h3>Antigravity CLI</h3>
                 <span class="status-badge" id="badge-cli">Checking...</span>
               </div>
-              <p>The terminal-first CLI surface. Manage, invoke, and supervise active subagents directly from your shell (`agy`). Includes automatic secure updates.</p>
+              <p>The terminal-first CLI surface. Manage, invoke, and supervise active subagents directly from your shell (`agy`).</p>
             </div>
             <div class="card-action">
               <label class="custom-checkbox">
-                <input type="checkbox" id="chk-cli" checked disabled>
+                <input type="checkbox" id="chk-cli" checked>
                 <span class="checkmark"></span>
               </label>
             </div>
@@ -118,7 +154,7 @@
           <div class="option-row">
             <div class="option-info">
               <h4>Installation Scope</h4>
-              <p>Choose where the `agy` binary and terminal symlinks are integrated.</p>
+              <p>Choose where binaries and shortcuts are integrated.</p>
             </div>
             <div class="scope-selector">
               <button class="selector-btn active" data-scope="local">
@@ -138,7 +174,7 @@
             Back
           </button>
           <button id="btn-trigger-install" class="primary-btn glow-btn">
-            Install / Update CLI
+            Install / Update Suite
             <svg class="bolt-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -148,7 +184,7 @@
 
       <!-- STEP 3: INSTALLATION LOGS & TERMINAL STREAM -->
       <section id="step-installing" class="step-section">
-        <h2>Deploying Antigravity CLI</h2>
+        <h2>Deploying Antigravity Suite</h2>
         <p class="section-desc">Executing native scripts and streaming pipeline logs in real-time...</p>
 
         <!-- Dynamic Process Progress Cards -->
@@ -157,13 +193,21 @@
             <div class="check-indicator" id="ind-env"></div>
             <span>Validating environment and architecture specifications</span>
           </div>
+          <div class="check-item" id="step-resolve">
+            <div class="check-indicator" id="ind-resolve"></div>
+            <span>Fetching latest versions and official branding packages</span>
+          </div>
           <div class="check-item" id="step-download">
             <div class="check-indicator" id="ind-download"></div>
-            <span>Downloading official CLI bootstrapper</span>
+            <span>Downloading release binaries from Google CDN</span>
           </div>
           <div class="check-item" id="step-extract">
             <div class="check-indicator" id="ind-extract"></div>
-            <span>Extracting files and linking native executables</span>
+            <span>Extracting files and linking executables</span>
+          </div>
+          <div class="check-item" id="step-shortcut">
+            <div class="check-indicator" id="ind-shortcut"></div>
+            <span>Configuring desktop shortcuts and application icons</span>
           </div>
         </div>
 
@@ -219,7 +263,7 @@
             </svg>
           </div>
           <h2>Installation Complete!</h2>
-          <p>The Antigravity CLI has been successfully deployed and registered in your Linux desktop shell environment.</p>
+          <p>The selected Antigravity components have been successfully deployed and registered in your Linux desktop shell environment.</p>
         </div>
 
         <div class="section-divider"></div>
