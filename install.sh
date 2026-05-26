@@ -466,9 +466,10 @@ if [ "$INSTALL_CLI" = true ]; then
     fi
 
     if [ "$CLI_INSTALLED" = false ]; then
-        log_warn "Performing fallback local installation of Antigravity CLI..."
-        # Build mock executable
-        ascii_cli='
+        if [ "$SIMULATED" = true ]; then
+            log_warn "Performing fallback local installation of Antigravity CLI..."
+            # Build mock executable
+            ascii_cli='
      ___         ___         ___   
     /   \       / __/       / __\  
    / /\  \     / /  __     / /     
@@ -476,8 +477,12 @@ if [ "$INSTALL_CLI" = true ]; then
  /  ____\  \  \ \__\ \ \  \ \____  
 /__/     \__\  \____\ \_\  \_____\ 
                      \/_/          '
-        generate_mock_binary "agy" "$BIN_DIR/agy" "Command Line Interface (agy)" "$CYAN" "$ascii_cli"
-        log_success "Fallback Antigravity CLI installed successfully."
+            generate_mock_binary "agy" "$BIN_DIR/agy" "Command Line Interface (agy)" "$CYAN" "$ascii_cli"
+            log_success "Fallback Antigravity CLI installed successfully."
+        else
+            log_error "Failed to install official Antigravity CLI. Installation aborted."
+            exit 1
+        fi
     fi
 
     # Symlink a clean alternative alias 'antigravity-cli'
@@ -527,21 +532,26 @@ if [ "$INSTALL_CORE" = true ]; then
     fi
 
     if [ "$CORE_INSTALLED" = false ]; then
-        log_warn "Performing fallback local installation of Antigravity Core..."
-        # Set up folder structure
-        mkdir -p "$SHARE_DIR/antigravity"
-        
-        # Build mock executable
-        ascii_core='
+        if [ "$SIMULATED" = true ]; then
+            log_warn "Performing fallback local installation of Antigravity Core..."
+            # Set up folder structure
+            mkdir -p "$SHARE_DIR/antigravity"
+            
+            # Build mock executable
+            ascii_core='
     __                  __   
    / /_   __  __  ____ / /_  
   / __ \ / / / / / __// __ \ 
  / /_/ // /_/ / / /_ / / / / 
 /_.___/ \__,_/  \__/ /_/ /_/ 
                              '
-        generate_mock_binary "antigravity" "$SHARE_DIR/antigravity/antigravity" "Core Hub Portal" "$BLUE" "$ascii_core"
-        create_wrapper_script "$SHARE_DIR/antigravity/antigravity" "$BIN_DIR/antigravity"
-        log_success "Fallback Antigravity Core installed successfully."
+            generate_mock_binary "antigravity" "$SHARE_DIR/antigravity/antigravity" "Core Hub Portal" "$BLUE" "$ascii_core"
+            create_wrapper_script "$SHARE_DIR/antigravity/antigravity" "$BIN_DIR/antigravity"
+            log_success "Fallback Antigravity Core installed successfully."
+        else
+            log_error "Failed to install official Antigravity Core. Installation aborted."
+            exit 1
+        fi
     fi
 
     # Create Launcher Shortcut (.desktop)
@@ -610,19 +620,24 @@ if [ "$INSTALL_IDE" = true ]; then
     fi
 
     if [ "$IDE_INSTALLED" = false ]; then
-        log_warn "Performing fallback local installation of Antigravity IDE..."
-        mkdir -p "$SHARE_DIR/antigravity-ide"
-        
-        # Build mock executable
-        ascii_ide='
+        if [ "$SIMULATED" = true ]; then
+            log_warn "Performing fallback local installation of Antigravity IDE..."
+            mkdir -p "$SHARE_DIR/antigravity-ide"
+            
+            # Build mock executable
+            ascii_ide='
     ____ ___   _____  
    / __ `__ \ / ___/  
   / / / / / /(__  )   
  /_/ /_/ /_//____/    
                       '
-        generate_mock_binary "antigravity-ide" "$SHARE_DIR/antigravity-ide/antigravity-ide" "Agent-First IDE Console" "$MAGENTA" "$ascii_ide"
-        create_wrapper_script "$SHARE_DIR/antigravity-ide/antigravity-ide" "$BIN_DIR/antigravity-ide"
-        log_success "Fallback Antigravity IDE installed successfully."
+            generate_mock_binary "antigravity-ide" "$SHARE_DIR/antigravity-ide/antigravity-ide" "Agent-First IDE Console" "$MAGENTA" "$ascii_ide"
+            create_wrapper_script "$SHARE_DIR/antigravity-ide/antigravity-ide" "$BIN_DIR/antigravity-ide"
+            log_success "Fallback Antigravity IDE installed successfully."
+        else
+            log_error "Failed to install official Antigravity IDE. Installation aborted."
+            exit 1
+        fi
     fi
 
     # Create Launcher Shortcut (.desktop)
