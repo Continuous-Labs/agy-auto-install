@@ -338,9 +338,8 @@ log_info "Downloading official branding from Google CDN..."
 if download_file "$ICON_COLOR_URL" "$LOGO_PATH" && download_file "$ICON_WHITE_URL" "$LOGO_WHITE_PATH"; then
     log_success "Official brand icons downloaded."
 else
-    log_warn "Failed to fetch brand icons from Google server. Will generate placeholders."
-    echo "Placeholder logo" > "$LOGO_PATH"
-    echo "Placeholder white logo" > "$LOGO_WHITE_PATH"
+    log_warn "Failed to fetch brand icons from Google server. Bypassing and using system default icons."
+    rm -f "$LOGO_PATH" "$LOGO_WHITE_PATH" 2>/dev/null || true
 fi
 
 # --- 6. Component Installation: Antigravity CLI ---
