@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antigravity 2.0 Linux Installer</title>
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Background Decorative Glowing Spheres -->
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="glow-orb orb-3"></div>
+
+  <div class="app-container">
+    <!-- Header Block -->
+    <header class="app-header">
+      <div class="logo-wrapper">
+        <svg class="app-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke="url(#logo-grad)" stroke-width="2" />
+          <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12" stroke="url(#logo-grad-2)" stroke-width="2" stroke-linecap="round" />
+          <circle cx="12" cy="12" r="4" fill="url(#logo-grad)"/>
+          <defs>
+            <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00f2fe"/>
+              <stop offset="100%" stop-color="#764ba2"/>
+            </linearGradient>
+            <linearGradient id="logo-grad-2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ff007f"/>
+              <stop offset="100%" stop-color="#4facfe"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <h1 class="glow-text">ANTIGRAVITY</h1>
+      <p class="subtitle">Unified Linux Installer &bull; Suite 2.0</p>
+    </header>
+
+    <!-- Glassmorphic Central Dashboard Card -->
+    <main class="dashboard-card">
+      
+      <!-- STEP 1: WELCOME & ENVIRONMENT DETECTION -->
+      <section id="step-welcome" class="step-section active">
+        <div class="welcome-hero">
+          <h2>Deploy Antigravity Seamlessly</h2>
+          <p>This assistant automates the extraction, link generation, environment configuration, and shortcut integrations for the Antigravity v2.0 Suite on Linux systems.</p>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <h3>System Autodetected Environment</h3>
+        <div class="system-grid">
+          <div class="info-tile">
+            <span class="tile-label">Operating System</span>
+            <span id="sys-os" class="tile-value">Detecting...</span>
+          </div>
+          <div class="info-tile">
+            <span class="tile-label">CPU Architecture</span>
+            <span id="sys-arch" class="tile-value">Detecting...</span>
+          </div>
+          <div class="info-tile">
+            <span class="tile-label">Processor Type</span>
+            <span id="sys-cpu" class="tile-value">Detecting...</span>
+          </div>
+          <div class="info-tile">
+            <span class="tile-label">Active User</span>
+            <span id="sys-user" class="tile-value">Detecting...</span>
+          </div>
+        </div>
+
+        <div class="action-footer">
+          <button id="btn-to-config" class="primary-btn glow-btn">
+            Get Started
+            <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- STEP 2: CONFIGURATION & SELECTION -->
+      <section id="step-config" class="step-section">
+        <h2>Choose Suite Components</h2>
+        <p class="section-desc">Select the items you would like to download, install, or update below.</p>
+
+        <!-- Components List Grid -->
+        <div class="components-grid">
+          
+          <!-- Component Card: Core -->
+          <div class="comp-card" data-comp="core">
+            <div class="card-icon" id="icon-core"></div>
+            <div class="card-details">
+              <div class="card-header">
+                <h3>Antigravity Core</h3>
+                <span class="status-badge" id="badge-core">Checking...</span>
+              </div>
+              <p>The standard client portal. Features the core engine, system agent integrations, and evaluation tools.</p>
+            </div>
+            <div class="card-action">
+              <label class="custom-checkbox">
+                <input type="checkbox" id="chk-core" checked>
+                <span class="checkmark"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Component Card: IDE -->
+          <div class="comp-card" data-comp="ide">
+            <div class="card-icon" id="icon-ide"></div>
+            <div class="card-details">
+              <div class="card-header">
+                <h3>Antigravity IDE</h3>
+                <span class="status-badge" id="badge-ide">Checking...</span>
+              </div>
+              <p>The fully-featured agentic IDE. Complete with agent managers, workspace visualisers, and code trackers.</p>
+            </div>
+            <div class="card-action">
+              <label class="custom-checkbox">
+                <input type="checkbox" id="chk-ide" checked>
+                <span class="checkmark"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Component Card: CLI -->
+          <div class="comp-card" data-comp="cli">
+            <div class="card-icon" id="icon-cli"></div>
+            <div class="card-details">
+              <div class="card-header">
+                <h3>Antigravity CLI</h3>
+                <span class="status-badge" id="badge-cli">Checking...</span>
+              </div>
+              <p>The terminal-first CLI surface. Manage, invoke, and supervise active subagents directly from your shell (`agy`).</p>
+            </div>
+            <div class="card-action">
+              <label class="custom-checkbox">
+                <input type="checkbox" id="chk-cli" checked>
+                <span class="checkmark"></span>
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- Scope and Advanced Options -->
+        <div class="options-container">
+          <div class="option-row">
+            <div class="option-info">
+              <h4>Installation Scope</h4>
+              <p>Choose where binaries and shortcuts are integrated.</p>
+            </div>
+            <div class="scope-selector">
+              <button class="selector-btn active" data-scope="local">
+                <span>Local User Only</span>
+                <small>~/.local (Recommended, No Sudo)</small>
+              </button>
+              <button class="selector-btn" data-scope="system">
+                <span>System-wide</span>
+                <small>/usr/local (Requires Sudo)</small>
+              </button>
+            </div>
+          </div>
+
+          <div class="option-row">
+            <div class="option-info">
+              <h4>Simulated Offline Installation</h4>
+              <p>Skips connection queries and deploys premium functional offline mocks.</p>
+            </div>
+            <div class="toggle-wrapper">
+              <label class="switch">
+                <input type="checkbox" id="opt-simulated">
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-footer">
+          <button id="btn-back-to-welcome" class="secondary-btn">
+            Back
+          </button>
+          <button id="btn-trigger-install" class="primary-btn glow-btn">
+            Install / Update Suite
+            <svg class="bolt-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- STEP 3: INSTALLATION LOGS & TERMINAL STREAM -->
+      <section id="step-installing" class="step-section">
+        <h2>Deploying Antigravity Suite</h2>
+        <p class="section-desc">Executing native scripts and streaming pipeline logs in real-time...</p>
+
+        <!-- Dynamic Process Progress Cards -->
+        <div class="process-checklist">
+          <div class="check-item" id="step-env">
+            <div class="check-indicator" id="ind-env"></div>
+            <span>Validating environment and architecture specifications</span>
+          </div>
+          <div class="check-item" id="step-resolve">
+            <div class="check-indicator" id="ind-resolve"></div>
+            <span>Fetching latest versions and official branding packages</span>
+          </div>
+          <div class="check-item" id="step-download">
+            <div class="check-indicator" id="ind-download"></div>
+            <span>Downloading release binaries from Google CDN</span>
+          </div>
+          <div class="check-item" id="step-extract">
+            <div class="check-indicator" id="ind-extract"></div>
+            <span>Extracting files and linking executables</span>
+          </div>
+          <div class="check-item" id="step-shortcut">
+            <div class="check-indicator" id="ind-shortcut"></div>
+            <span>Configuring desktop shortcuts and application icons</span>
+          </div>
+        </div>
+
+        <!-- Master Progress Bar -->
+        <div class="progress-container">
+          <div class="progress-bar-wrapper">
+            <div id="master-progress" class="progress-bar-fill" style="width: 0%"></div>
+          </div>
+          <div class="progress-stats">
+            <span id="progress-text">Staging installer...</span>
+            <span id="progress-percent">0%</span>
+          </div>
+        </div>
+
+        <!-- High-Fidelity Console Window -->
+        <div class="terminal-window">
+          <div class="terminal-header">
+            <div class="term-dots">
+              <span class="dot red-dot"></span>
+              <span class="dot yellow-dot"></span>
+              <span class="dot green-dot"></span>
+            </div>
+            <div class="term-title">install_pipeline.sh</div>
+            <div class="term-actions">
+              <button id="btn-term-clear" class="term-btn">Clear</button>
+            </div>
+          </div>
+          <div class="terminal-body" id="terminal-logs">
+            <div class="terminal-line system-line">[SYSTEM] Terminal established. Connecting to installation pipeline...</div>
+          </div>
+        </div>
+
+        <!-- Floating Cancel Action -->
+        <div class="action-footer">
+          <button id="btn-abort-install" class="danger-btn">
+            Cancel Process
+          </button>
+        </div>
+      </section>
+
+      <!-- STEP 4: SUCCESS / COMPLETION SCREEN -->
+      <section id="step-completed" class="step-section">
+        <div class="success-hero">
+          <div class="success-icon-wrapper">
+            <svg class="success-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 13L9 17L19 7" stroke="url(#success-grad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <defs>
+                <linearGradient id="success-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#38ef7d"/>
+                  <stop offset="100%" stop-color="#11998e"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <h2>Installation Complete!</h2>
+          <p>The selected Antigravity components have been successfully deployed and registered in your Linux desktop shell environment.</p>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- Environment Instruction Details -->
+        <div class="instructions-card">
+          <h4>Shell Configuration Action Required</h4>
+          <p>To enable executing Antigravity tools from any terminal session, ensure your local binary folder is in your system <code>PATH</code>. Run these commands to update your terminal profile:</p>
+          <div class="code-box">
+            <button class="copy-btn" id="btn-copy-code">Copy</button>
+            <pre><code id="profile-code-block">echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.bashrc
+source ~/.bashrc</code></pre>
+          </div>
+        </div>
+
+        <div class="action-footer">
+          <button id="btn-restart" class="primary-btn glow-btn">
+            Done
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Page Footer -->
+    <footer class="app-footer">
+      <p>&copy; 2026 Google Antigravity Project. Built for developers by developers.</p>
+    </footer>
+  </div>
+
+  <!-- Client-side javascript code -->
+  <script src="assets/icons.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

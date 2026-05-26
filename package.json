@@ -1,0 +1,19 @@
+{
+  "name": "antigravity-installer",
+  "version": "1.0.0",
+  "description": "Installation and update utility for the Antigravity 2.0 Suite on Linux",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "antigravity",
+    "installer",
+    "linux"
+  ],
+  "author": "Antigravity Team",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
