@@ -6,9 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     os: 'Linux',
     arch: 'x64',
     scope: 'local',
-    simulated: false,
-    selectedComponents: ['core', 'ide', 'cli'],
-    installedStatus: { core: false, ide: false, cli: false }
+    installedStatus: { cli: false }
   };
 
   // DOM Elements
@@ -29,10 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const activeControls = {
-    chkCore: document.getElementById('chk-core'),
-    chkIde: document.getElementById('chk-ide'),
     chkCli: document.getElementById('chk-cli'),
-    optSimulated: document.getElementById('opt-simulated'),
     abort: document.getElementById('btn-abort-install'),
     restart: document.getElementById('btn-restart'),
     copyCode: document.getElementById('btn-copy-code')
@@ -97,39 +92,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Selection Checkbox Listeners
-  const checkBoxes = [
-    { el: activeControls.chkCore, name: 'core' },
-    { el: activeControls.chkIde, name: 'ide' },
-    { el: activeControls.chkCli, name: 'cli' }
-  ];
-
-  checkBoxes.forEach(item => {
-    item.el.addEventListener('change', () => {
-      updateComponentCardSelection(item.name, item.el.checked);
-      validateTriggerButtonState();
-    });
-    // Set initial card borders
-    updateComponentCardSelection(item.name, item.el.checked);
-  });
-
-  // Toggle simulate change
-  activeControls.optSimulated.addEventListener('change', () => {
-    state.simulated = activeControls.optSimulated.checked;
-  });
-
   // --- 4. Logic Implementations ---
   
   function injectIcons() {
     // Inject brand SVGs
-    document.getElementById('icon-core').innerHTML = Icons.core;
-    document.getElementById('icon-ide').innerHTML = Icons.ide;
-    document.getElementById('icon-cli').innerHTML = Icons.cli;
+    const cliIconContainer = document.getElementById('icon-cli');
+    if (cliIconContainer) {
+      cliIconContainer.innerHTML = Icons.cli;
+    }
     
     // Inject list indicator base SVGs
-    const indicators = ['env', 'resolve', 'download', 'extract', 'shortcut'];
+    const indicators = ['env', 'download', 'extract'];
     indicators.forEach(id => {
-      document.getElementById(`ind-${id}`).innerHTML = Icons.sync;
+      const el = document.getElementById(`ind-${id}`);
+      if (el) el.innerHTML = Icons.sync;
     });
   }
 
@@ -138,23 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
       sections[key].classList.remove('active');
     });
     sections[targetStep].classList.add('active');
-  }
-
-  function updateComponentCardSelection(compName, isChecked) {
-    const card = document.querySelector(`.comp-card[data-comp="${compName}"]`);
-    if (isChecked) {
-      card.classList.add('selected');
-      if (!state.selectedComponents.includes(compName)) {
-        state.selectedComponents.push(compName);
-      }
-    } else {
-      card.classList.remove('selected');
-      state.selectedComponents = state.selectedComponents.filter(c => c !== compName);
-    }
-  }
-
-  function validateTriggerButtonState() {
-    configBtns.trigger.disabled = state.selectedComponents.length === 0;
   }
 
   function updatePathCodeBlock() {
@@ -180,13 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
       state.arch = data.arch;
 
       // Update Step 2 Card status badges
-      updateStatusBadge('core', data.components.core.installed);
-      updateStatusBadge('ide', data.components.ide.installed);
       updateStatusBadge('cli', data.components.cli.installed);
 
-      // Cache statuses
-      state.installedStatus.core = data.components.core.installed;
-      state.installedStatus.ide = data.components.ide.installed;
+      // Cache status
       state.installedStatus.cli = data.components.cli.installed;
       
     } catch (e) {
@@ -201,12 +156,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateStatusBadge(comp, isInstalled) {
     const badge = document.getElementById(`badge-${comp}`);
-    if (isInstalled) {
-      badge.innerText = 'Installed';
-      badge.className = 'status-badge installed';
-    } else {
-      badge.innerText = 'Available';
-      badge.className = 'status-badge missing';
+    if (badge) {
+      if (isInstalled) {
+        badge.innerText = 'Installed';
+        badge.className = 'status-badge installed';
+      } else {
+        badge.innerText = 'Available';
+        badge.className = 'status-badge missing';
+      }
     }
   }
 
@@ -216,7 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Clean ANSI terminal styling characters
   function cleanAnsiColors(text) {
-    // Regular expression matching ANSI escape sequences
     const ansiRegex = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g;
     return text.replace(ansiRegex, '');
   }
@@ -230,22 +186,20 @@ document.addEventListener('DOMContentLoaded', () => {
     sseElements.progressText.innerText = 'Establishing logs pipeline...';
     sseElements.terminal.innerHTML = '<div class="terminal-line system-line">[SYSTEM] Initialising real-time installer execution stream...</div>';
     
-    const indicators = ['env', 'resolve', 'download', 'extract', 'shortcut'];
+    const indicators = ['env', 'download', 'extract'];
     indicators.forEach(id => {
       const item = document.getElementById(`step-${id}`);
       const ind = document.getElementById(`ind-${id}`);
-      item.className = 'check-item';
-      ind.innerHTML = Icons.sync;
+      if (item) item.className = 'check-item';
+      if (ind) ind.innerHTML = Icons.sync;
     });
 
     transitionStep('installing');
 
-    // Build URL parameters
-    const comps = state.selectedComponents.join(',');
+    // Build URL parameters (legacy compatibility, only install cli component)
+    const comps = 'cli';
     const scope = state.scope;
-    const sim = state.simulated;
-
-    const streamUrl = `/api/install/stream?components=${comps}&scope=${scope}&simulated=${sim}`;
+    const streamUrl = `/api/install/stream?components=${comps}&scope=${scope}`;
 
     // Establish EventSource pipeline
     eventSource = new EventSource(streamUrl);
@@ -322,15 +276,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateStepIndicator(stepId, status, percent) {
-    const item = document.getElementById(`step-${stepId}`);
-    const ind = document.getElementById(`ind-${stepId}`);
+    // Map resolve/shortcut steps to relevant CLI steps for backward compatibility with installer outputs
+    let mappedStepId = stepId;
+    if (stepId === 'resolve') mappedStepId = 'download';
+    if (stepId === 'shortcut' || stepId === 'finish') mappedStepId = 'extract';
+
+    const item = document.getElementById(`step-${mappedStepId}`);
+    const ind = document.getElementById(`ind-${mappedStepId}`);
     
-    if (status === 'active') {
-      item.className = 'check-item active';
-      ind.innerHTML = Icons.sync;
-    } else if (status === 'done') {
-      item.className = 'check-item done';
-      ind.innerHTML = Icons.check;
+    if (item && ind) {
+      if (status === 'active') {
+        item.className = 'check-item active';
+        ind.innerHTML = Icons.sync;
+      } else if (status === 'done') {
+        item.className = 'check-item done';
+        ind.innerHTML = Icons.check;
+      }
     }
 
     // Set Master progress fill bar
@@ -339,12 +300,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Update active label status
     let label = 'Processing pipeline...';
-    if (stepId === 'env') label = 'Validating system target environments...';
-    else if (stepId === 'resolve') label = 'Resolving remote updater version APIs...';
-    else if (stepId === 'download') label = 'Downloading dynamic release assets...';
-    else if (stepId === 'extract') label = 'Extracting binaries and placing executables...';
-    else if (stepId === 'shortcut') label = 'Configuring launchers and re-indexing icons...';
-    else if (stepId === 'finish') label = 'Process completed successfully!';
+    if (mappedStepId === 'env') label = 'Validating system target environments...';
+    else if (mappedStepId === 'download') label = 'Downloading official CLI bootstrapper...';
+    else if (mappedStepId === 'extract') label = 'Extracting binaries and placing executables...';
     
     sseElements.progressText.innerText = label;
   }
