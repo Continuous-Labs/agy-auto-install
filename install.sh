@@ -66,6 +66,21 @@ log_error() {
     echo -e "${RED}[ERROR] ✗${NC} $1" >&2
 }
 
+create_wrapper_script() {
+    local target_exec="$1"
+    local bin_path="$2"
+    local dir_path
+    dir_path=$(dirname "$target_exec")
+
+    rm -f "$bin_path" 2>/dev/null || true
+    cat << EOF > "$bin_path"
+#!/bin/bash
+# Antigravity Executable Wrapper
+cd "$dir_path" && exec "./\$(basename "$target_exec")" "\$@"
+EOF
+    chmod +x "$bin_path"
+}
+
 resolve_latest_versions() {
     if [ "$SIMULATED" = true ]; then
         return 0
@@ -264,16 +279,23 @@ esac
 log_success "Architecture detected: ${BOLD}$ARCH_NAME${NC} ($ARCH_LABEL)"
 
 # Resolve Paths
+CUSTOM_DIR=false
 if [ -z "$TARGET_DIR" ]; then
     if [ "$SCOPE" = "system" ]; then
         TARGET_DIR="/usr/local"
     else
         TARGET_DIR="$HOME/.local"
     fi
+else
+    CUSTOM_DIR=true
 fi
 
 BIN_DIR="$TARGET_DIR/bin"
-SHARE_DIR="$TARGET_DIR/share"
+if [ "$CUSTOM_DIR" = true ]; then
+    SHARE_DIR="$TARGET_DIR"
+else
+    SHARE_DIR="$TARGET_DIR/share"
+fi
 DESKTOP_DIR="$HOME/.local/share/applications"
 if [ "$SCOPE" = "system" ]; then
     DESKTOP_DIR="/usr/share/applications"
@@ -480,18 +502,21 @@ if [ "$INSTALL_CORE" = true ]; then
             log_success "Download complete."
             log_info "Extracting Application Data..."
             mkdir -p "$SHARE_DIR/antigravity"
-            if tar -xzf "$STAGING_DIR/core.tar.gz" -C "$SHARE_DIR/antigravity" 2>/dev/null || tar -xzf "$STAGING_DIR/core.tar.gz" -C "$SHARE_DIR/antigravity"; then
+            if tar -xzf "$STAGING_DIR/core.tar.gz" --strip-components=1 -C "$SHARE_DIR/antigravity" 2>/dev/null || tar -xzf "$STAGING_DIR/core.tar.gz" --strip-components=1 -C "$SHARE_DIR/antigravity"; then
                 log_success "Extraction complete."
                 # Symlink executable
                 # Find main executable in extracted folder
                 if [ -f "$SHARE_DIR/antigravity/antigravity" ]; then
-                    ln -sf "$SHARE_DIR/antigravity/antigravity" "$BIN_DIR/antigravity"
+                    create_wrapper_script "$SHARE_DIR/antigravity/antigravity" "$BIN_DIR/antigravity"
                     CORE_INSTALLED=true
                 else
-                    # Scan share/antigravity folder for executables
-                    found_exec=$(find "$SHARE_DIR/antigravity" -maxdepth 2 -type f -executable | head -n 1)
+                    # Scan share/antigravity folder for executables, avoiding .so files
+                    found_exec=$(find "$SHARE_DIR/antigravity" -maxdepth 3 -type f -name "antigravity" -executable | head -n 1)
+                    if [ -z "$found_exec" ]; then
+                        found_exec=$(find "$SHARE_DIR/antigravity" -maxdepth 3 -type f -executable ! -name "*.so" | head -n 1)
+                    fi
                     if [ -n "$found_exec" ]; then
-                        ln -sf "$found_exec" "$BIN_DIR/antigravity"
+                        create_wrapper_script "$found_exec" "$BIN_DIR/antigravity"
                         CORE_INSTALLED=true
                     fi
                 fi
@@ -515,7 +540,7 @@ if [ "$INSTALL_CORE" = true ]; then
 /_.___/ \__,_/  \__/ /_/ /_/ 
                              '
         generate_mock_binary "antigravity" "$SHARE_DIR/antigravity/antigravity" "Core Hub Portal" "$BLUE" "$ascii_core"
-        ln -sf "$SHARE_DIR/antigravity/antigravity" "$BIN_DIR/antigravity"
+        create_wrapper_script "$SHARE_DIR/antigravity/antigravity" "$BIN_DIR/antigravity"
         log_success "Fallback Antigravity Core installed successfully."
     fi
 
@@ -537,7 +562,7 @@ Name=Antigravity
 Comment=Google Antigravity Core Mission Control
 Exec=$BIN_DIR/antigravity
 Icon=$DESKTOP_ICON_PATH
-Terminal=true
+Terminal=false
 Categories=Development;Utility;
 StartupNotify=true
 EOF
@@ -562,17 +587,19 @@ if [ "$INSTALL_IDE" = true ]; then
             log_success "Download complete."
             log_info "Extracting IDE Files..."
             mkdir -p "$SHARE_DIR/antigravity-ide"
-            if tar -xzf "$STAGING_DIR/ide.tar.gz" -C "$SHARE_DIR/antigravity-ide" 2>/dev/null || tar -xzf "$STAGING_DIR/ide.tar.gz" -C "$SHARE_DIR/antigravity-ide"; then
+            if tar -xzf "$STAGING_DIR/ide.tar.gz" --strip-components=1 -C "$SHARE_DIR/antigravity-ide" 2>/dev/null || tar -xzf "$STAGING_DIR/ide.tar.gz" --strip-components=1 -C "$SHARE_DIR/antigravity-ide"; then
                 log_success "Extraction complete."
-                
-                # Find main executable
-                if [ -f "$SHARE_DIR/antigravity-ide/antigravity-ide" ]; then
-                    ln -sf "$SHARE_DIR/antigravity-ide/antigravity-ide" "$BIN_DIR/antigravity-ide"
+                           if [ -f "$SHARE_DIR/antigravity-ide/antigravity-ide" ]; then
+                    create_wrapper_script "$SHARE_DIR/antigravity-ide/antigravity-ide" "$BIN_DIR/antigravity-ide"
                     IDE_INSTALLED=true
                 else
-                    found_exec=$(find "$SHARE_DIR/antigravity-ide" -maxdepth 2 -type f -executable | head -n 1)
+                    # Scan share/antigravity-ide folder for executables, avoiding .so files
+                    found_exec=$(find "$SHARE_DIR/antigravity-ide" -maxdepth 3 -type f -name "antigravity-ide" -executable | head -n 1)
+                    if [ -z "$found_exec" ]; then
+                        found_exec=$(find "$SHARE_DIR/antigravity-ide" -maxdepth 3 -type f -executable ! -name "*.so" | head -n 1)
+                    fi
                     if [ -n "$found_exec" ]; then
-                        ln -sf "$found_exec" "$BIN_DIR/antigravity-ide"
+                        create_wrapper_script "$found_exec" "$BIN_DIR/antigravity-ide"
                         IDE_INSTALLED=true
                     fi
                 fi
@@ -594,7 +621,7 @@ if [ "$INSTALL_IDE" = true ]; then
  /_/ /_/ /_//____/    
                       '
         generate_mock_binary "antigravity-ide" "$SHARE_DIR/antigravity-ide/antigravity-ide" "Agent-First IDE Console" "$MAGENTA" "$ascii_ide"
-        ln -sf "$SHARE_DIR/antigravity-ide/antigravity-ide" "$BIN_DIR/antigravity-ide"
+        create_wrapper_script "$SHARE_DIR/antigravity-ide/antigravity-ide" "$BIN_DIR/antigravity-ide"
         log_success "Fallback Antigravity IDE installed successfully."
     fi
 
@@ -614,7 +641,7 @@ Name=Antigravity IDE
 Comment=Antigravity Integrated Agent-First IDE
 Exec=$BIN_DIR/antigravity-ide
 Icon=$DESKTOP_ICON_PATH
-Terminal=true
+Terminal=false
 Categories=Development;IDE;
 StartupNotify=true
 EOF
